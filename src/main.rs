@@ -13,13 +13,11 @@ fn main() {
     // Check local working directory for config file
     if config_path.is_none() {
         let local_config_path = env::current_dir();
-        if local_config_path.is_ok() {
-            let mut local_config_path = local_config_path.unwrap();
+        if let Ok(p) = local_config_path {
+            let mut local_config_path = p;
             local_config_path.push("gid.toml");
-            if local_config_path.try_exists().is_ok() {
-                if local_config_path.try_exists().unwrap() {
-                    config_path = Some(String::from(local_config_path.to_str().unwrap()));
-                }
+            if let Ok(true) = local_config_path.try_exists() {
+                config_path = local_config_path.to_str().map(str::to_string);
             }
         }
     }
@@ -29,9 +27,10 @@ fn main() {
         // TODO
     }
 
+    let config_path = config_path.expect("could not detect configuration file");
+
     let config = config::Config::parse(
-        &fs::read_to_string(config_path.expect("could not detect configuration file"))
-            .expect("could not load configuration file"),
+        &fs::read_to_string(config_path).expect("could not load configuration file"),
     )
     .expect("could not parse configuration file");
 
@@ -42,54 +41,33 @@ fn main() {
 
     let mut config_args: Vec<String> = Vec::new();
 
-    match profile.user_name() {
-        Some(n) => {
-            config_args.push("-c".to_string());
-            config_args.push(format!("user.name={}", n));
-        }
-        None => {}
+    if let Some(n) = profile.user_name() {
+        config_args.push("-c".to_string());
+        config_args.push(format!("user.name={}", n));
     }
-    match profile.user_email() {
-        Some(e) => {
-            config_args.push("-c".to_string());
-            config_args.push(format!("user.email={}", e));
-        }
-        None => {}
+    if let Some(e) = profile.user_email() {
+        config_args.push("-c".to_string());
+        config_args.push(format!("user.email={}", e));
     }
-    match profile.user_signingkey() {
-        Some(s) => {
-            config_args.push("-c".to_string());
-            config_args.push(format!("user.signingkey={}", s));
-        }
-        None => {}
+    if let Some(s) = profile.user_signingkey() {
+        config_args.push("-c".to_string());
+        config_args.push(format!("user.signingkey={}", s));
     }
-    match profile.commit_gpgsign() {
-        Some(g) => {
-            config_args.push("-c".to_string());
-            config_args.push(format!("commit.gpgsign={}", g));
-        }
-        None => {}
+    if let Some(g) = profile.commit_gpgsign() {
+        config_args.push("-c".to_string());
+        config_args.push(format!("commit.gpgsign={}", g));
     }
-    match profile.tag_gpgsign() {
-        Some(g) => {
-            config_args.push("-c".to_string());
-            config_args.push(format!("tag.gpgsign={}", g));
-        }
-        None => {}
+    if let Some(g) = profile.tag_gpgsign() {
+        config_args.push("-c".to_string());
+        config_args.push(format!("tag.gpgsign={}", g));
     }
-    match profile.pull_rebase() {
-        Some(r) => {
-            config_args.push("-c".to_string());
-            config_args.push(format!("pull.rebase={}", r));
-        }
-        None => {}
+    if let Some(r) = profile.pull_rebase() {
+        config_args.push("-c".to_string());
+        config_args.push(format!("pull.rebase={}", r));
     }
-    match profile.sshkey() {
-        Some(s) => {
-            config_args.push("-c".to_string());
-            config_args.push(format!("core.sshCommand=ssh -i '{}'", s));
-        }
-        None => {}
+    if let Some(s) = profile.sshkey() {
+        config_args.push("-c".to_string());
+        config_args.push(format!("core.sshCommand=ssh -i '{}'", s));
     }
 
     Command::new("git")
