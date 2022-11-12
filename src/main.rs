@@ -10,8 +10,7 @@ use serde::{
     Deserialize,
 };
 use toml::{
-    Value,
-    from_str
+    from_str,
 };
 
 #[derive(Deserialize, Debug)]
@@ -80,7 +79,7 @@ fn main() {
     if config_path.is_none() {
     }
 
-    let config: Config = toml::from_str(
+    let config: Config = from_str(
         &fs::read_to_string(
             config_path.expect("could not detect configuration file")
         ).expect("could not load configuration file")
@@ -113,6 +112,42 @@ fn main() {
                     config_args.push(format!("user.signingkey={}", s));
                 }, None => {}
             }
+        }, None => {}
+    }
+    match &profile.commit {
+        Some(c) => {
+            match &c.gpgsign {
+                Some(g) => {
+                    config_args.push("-c".to_string());
+                    config_args.push(format!("commit.gpgsign={}", g));
+                }, None => {}
+            }
+        }, None => {}
+    }
+    match &profile.tag {
+        Some(t) => {
+            match &t.gpgsign {
+                Some(g) => {
+                    config_args.push("-c".to_string());
+                    config_args.push(format!("tag.gpgsign={}", g));
+                }, None => {}
+            }
+        }, None => {}
+    }
+    match &profile.pull {
+        Some(p) => {
+            match &p.rebase {
+                Some(r) => {
+                    config_args.push("-c".to_string());
+                    config_args.push(format!("pull.rebase={}", r));
+                }, None => {}
+            }
+        }, None => {}
+    }
+    match &profile.sshkey {
+        Some(s) => {
+            config_args.push("-c".to_string());
+            config_args.push(format!("core.sshCommand=ssh -i '{}'", s));
         }, None => {}
     }
 
