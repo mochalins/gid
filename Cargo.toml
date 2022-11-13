@@ -3,6 +3,14 @@ name = "gid"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "gid"
+path = "src/gid.rs"
+
+[[bin]]
+name = "gidc"
+path = "src/gidc.rs"
+
 [dependencies]
 toml = { version = "0.5", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
