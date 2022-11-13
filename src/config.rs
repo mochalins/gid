@@ -92,6 +92,16 @@ impl Config {
         Config::parse(&config_string)
     }
 
+    pub fn list_profile_names(&self) -> Vec<String> {
+        let mut result: Vec<String> = Vec::new();
+
+        for (name, _) in &self.profile {
+            result.push(name.to_string());
+        }
+
+        result
+    }
+
     pub fn get_profile<'a>(&'a self, profile: &str) -> Option<&'a Profile> {
         self.profile.get(profile)
     }

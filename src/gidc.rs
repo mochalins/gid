@@ -13,6 +13,9 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Action {
+    /// List all profiles
+    List,
+
     /// Set active profile
     Set { name: String },
 }
@@ -25,6 +28,12 @@ fn main() {
     let mut config_doc = config_string.parse::<Document>().unwrap();
 
     match &cli.command {
+        Action::List => {
+            let names = config.list_profile_names();
+            for name in names {
+                println!("{}", name);
+            }
+        },
         Action::Set { name } => {
             config.set_active(name).expect("invalid profile name");
             config_doc["active"] = value(name);
