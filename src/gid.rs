@@ -38,7 +38,7 @@ fn main() {
     }
     if let Some(s) = profile.sshkey() {
         config_args.push("-c".to_string());
-        config_args.push(format!("core.sshCommand=ssh -i '{}'", s));
+        config_args.push(format!("core.sshCommand=ssh -i \"{}\"", s));
     }
 
     Command::new("git")
