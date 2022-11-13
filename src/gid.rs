@@ -45,5 +45,5 @@ fn main() {
         .args(config_args)
         .args(user_args)
         .status()
-        .expect("failed to execute git command");
+        .expect("failed to execute Git command");
 }

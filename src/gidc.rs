@@ -14,9 +14,9 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Action {
-    /// Export profile settings to git configuration
+    /// Export profile settings to Git configuration
     Export {
-        /// Export to global git configuration. Local if not set.
+        /// Export to global Git configuration. Local if not set.
         #[arg(short, long)]
         global: bool,
 
@@ -57,7 +57,7 @@ fn main() {
                     .arg("user.name")
                     .arg(n)
                     .status()
-                    .expect("failed to execute git command");
+                    .expect("failed to execute Git command");
             }
             if let Some(e) = profile.user_email() {
                 Command::new("git")
@@ -65,7 +65,7 @@ fn main() {
                     .arg("user.email")
                     .arg(e)
                     .status()
-                    .expect("failed to execute git command");
+                    .expect("failed to execute Git command");
             }
             if let Some(s) = profile.user_signingkey() {
                 Command::new("git")
@@ -73,7 +73,7 @@ fn main() {
                     .arg("user.signingkey")
                     .arg(s)
                     .status()
-                    .expect("failed to execute git command");
+                    .expect("failed to execute Git command");
             }
             if let Some(g) = profile.commit_gpgsign() {
                 Command::new("git")
@@ -81,7 +81,7 @@ fn main() {
                     .arg("commit.gpgsign")
                     .arg(g.to_string())
                     .status()
-                    .expect("failed to execute git command");
+                    .expect("failed to execute Git command");
             }
             if let Some(g) = profile.tag_gpgsign() {
                 Command::new("git")
@@ -89,7 +89,7 @@ fn main() {
                     .arg("tag.gpgsign")
                     .arg(g.to_string())
                     .status()
-                    .expect("failed to execute git command");
+                    .expect("failed to execute Git command");
             }
             if let Some(r) = profile.pull_rebase() {
                 Command::new("git")
@@ -97,7 +97,7 @@ fn main() {
                     .arg("pull.rebase")
                     .arg(r.to_string())
                     .status()
-                    .expect("failed to execute git command");
+                    .expect("failed to execute Git command");
             }
             if let Some(s) = profile.sshkey() {
                 Command::new("git")
@@ -105,7 +105,7 @@ fn main() {
                     .arg("core.sshCommand")
                     .arg(format!("ssh -i \"{}\"", s))
                     .status()
-                    .expect("failed to execute git command");
+                    .expect("failed to execute Git command");
             }
         }
         Action::List => {
