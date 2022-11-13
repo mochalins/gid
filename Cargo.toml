@@ -1,7 +1,12 @@
 [package]
 name = "gid"
+description = "git identity manager"
+license = "UPL-1.0"
+authors = ["sushigiri"]
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+repository = "https://github.com/sushigiri/gid"
 default-run = "gid"
 
 [[bin]]
