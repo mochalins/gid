@@ -4,7 +4,8 @@ use toml_edit::{value, Document};
 mod config;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(about = "`gid` configuration utility")]
+#[command(author, version, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
     #[command(subcommand)]
