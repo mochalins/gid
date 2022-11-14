@@ -20,10 +20,14 @@ gid commit -m "This is a commit"
 
 An accompanying utility `gidc` is used to select and manage Git profiles.
 
+> **Warning**
+> Before `gid` or its accompanying utility `gidc` are used, a configuration
+> file must be created
+
 ### Configuration
 
-Before `gid` or its accompanying utility `gidc` are used, a configuration file
-must be created.
+`gid` usage requires an existing configuration file in [TOML](https://toml.io)
+syntax.
 
 This file must be named `gid.toml`, and can be placed in one of two locations
 (listed in order of priority):
@@ -69,8 +73,8 @@ An active Git profile can be selected with the `set` command.
 ```console
 gidc set <profile_name>
 ```
-
-The provided profile name must be a valid name in the configuration file.
+> **Warning**
+> The provided profile name must be a valid name in the configuration file
 
 #### List all profiles
 
