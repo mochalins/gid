@@ -4,6 +4,7 @@ use toml_edit::{value, Document};
 mod config;
 
 #[derive(Parser, Debug)]
+#[command(name = "gidc")]
 #[command(about = "`gid` configuration utility")]
 #[command(author, version, long_about = None)]
 #[command(propagate_version = true)]
