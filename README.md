@@ -29,11 +29,14 @@ An accompanying utility `gidc` is used to select and manage Git profiles.
 `gid` usage requires an existing configuration file in [TOML](https://toml.io)
 syntax.
 
-This file must be named `gid.toml`, and can be placed in one of two locations
+This file must be named `gid.toml`, and can be placed in one of three locations
 (listed in order of priority):
 
 1. Any path pointed to by an environment variable `GID_CONFIG`
-2. In the current working directory where the `gid` or `gidc` commands are used
+2. In the same directory as the `gid` and `gidc` binaries
+3. In the user's configuration directory (on Windows, this is
+  `$USERPROFILE/.config/gid/gid.toml`; elsewhere, it is
+  `$HOME/.config/gid/gid.toml`)
 
 <details>
 <summary markdown="span"><i>An example `gid.toml`</i></summary>
