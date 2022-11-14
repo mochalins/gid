@@ -35,7 +35,8 @@ This file must be named `gid.toml`, and can be placed in one of two locations
 1. Any path pointed to by an environment variable `GID_CONFIG`
 2. In the current working directory where the `gid` or `gidc` commands are used
 
-An example `gid.toml`:
+<details>
+<summary markdown="span"><i>An example `gid.toml`</i></summary>
 
 ```toml
 active = "profile_name_1"  # The current active Git profile must be provided
@@ -55,6 +56,7 @@ user.name = "my_git_username_2"
 user.email = "i-only-want-to-change-these-settings@example.com"
 sshkey = "$HOME/.ssh/id_rsa"
 ```
+</details>
 
 ### `gidc`
 
@@ -66,7 +68,8 @@ section of the `gidc` utility.
 gidc --help
 ```
 
-#### Select an active profile
+<details>
+<summary markdown="span"><h4>Select an active profile</h4></summary>
 
 An active Git profile can be selected with the `set` command.
 
@@ -75,8 +78,10 @@ gidc set <profile_name>
 ```
 > **Warning**
 > The provided profile name must be a valid name in the configuration file
+</details>
 
-#### List all profiles
+<details>
+<summary markdown="span"><h4>List all profiles</h4></summary>
 
 All available profile names in the configuration file can be listed with the
 `list` command.
@@ -84,8 +89,10 @@ All available profile names in the configuration file can be listed with the
 ```console
 gidc list
 ```
+</details>
 
-#### Export profile to Git configuration
+<details>
+<summary markdown="span"><h4>Export profile to Git configuration</h4></summary>
 
 Any defined profile can be exported to either a repository-local or the global
 Git configuration with the `export` command.
@@ -100,3 +107,4 @@ configuration by default.
 
 A profile name can be provided to `export` to specify which profile should be
 used. If not provided, the current active profile will be used by default.
+</details>
