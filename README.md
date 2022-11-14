@@ -35,7 +35,7 @@ This file must be named `gid.toml`, and can be placed in one of three locations
 1. Any path pointed to by an environment variable `GID_CONFIG`
 2. In the same directory as the `gid` and `gidc` binaries
 3. In the user's configuration directory (on Windows, this is
-  `$USERPROFILE/.config/gid/gid.toml`; elsewhere, it is
+  `%USERPROFILE%/.config/gid/gid.toml`; elsewhere, it is
   `$HOME/.config/gid/gid.toml`)
 
 <details>
