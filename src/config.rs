@@ -58,10 +58,10 @@ impl Config {
 
         // Check local working directory for config file
         if config_path.is_none() {
-            let local_config_path = env::current_dir();
+            let local_config_path = env::current_exe();
             if let Ok(p) = local_config_path {
                 let mut local_config_path = p;
-                local_config_path.push("gid.toml");
+                local_config_path.set_file_name("gid.toml");
                 if let Ok(true) = local_config_path.try_exists() {
                     config_path = Some(local_config_path);
                 }
@@ -70,7 +70,21 @@ impl Config {
 
         // Check config directory for config file
         if config_path.is_none() {
-            // TODO
+            let home_env = if env::consts::OS == "windows" {
+                "USERPROFILE"
+            } else {
+                "HOME"
+            };
+            let home_path = env::var(home_env);
+            if let Ok(s) = home_path {
+                let mut home_config_path = PathBuf::from(&s);
+                home_config_path.push(".config");
+                home_config_path.push("gid");
+                home_config_path.push("gid.toml");
+                if let Ok(true) = home_config_path.try_exists() {
+                    config_path = Some(home_config_path);
+                }
+            }
         }
         config_path
     }
