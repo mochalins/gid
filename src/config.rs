@@ -2,45 +2,49 @@ use serde::Deserialize;
 use std::{
     collections::HashMap,
     env, fs,
+    io::Write,
     path::{Path, PathBuf},
+    str,
 };
 use toml::from_str;
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
-    pub active: String,
-    pub profile: HashMap<String, Profile>,
+    active: String,
+
+    #[serde(flatten)]
+    profiles: HashMap<String, Profile>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Profile {
-    pub user: Option<ProfileUser>,
-    pub commit: Option<ProfileCommit>,
-    pub tag: Option<ProfileTag>,
-    pub pull: Option<ProfilePull>,
-    pub sshkey: Option<String>,
+    user: Option<ProfileUser>,
+    commit: Option<ProfileCommit>,
+    tag: Option<ProfileTag>,
+    pull: Option<ProfilePull>,
+    sshkey: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ProfileUser {
-    pub name: Option<String>,
-    pub email: Option<String>,
-    pub signingkey: Option<String>,
+struct ProfileUser {
+    name: Option<String>,
+    email: Option<String>,
+    signingkey: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ProfileCommit {
-    pub gpgsign: Option<bool>,
+struct ProfileCommit {
+    gpgsign: Option<bool>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ProfileTag {
-    pub gpgsign: Option<bool>,
+struct ProfileTag {
+    gpgsign: Option<bool>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ProfilePull {
-    pub rebase: Option<bool>,
+struct ProfilePull {
+    rebase: Option<bool>,
 }
 
 impl Config {
@@ -109,7 +113,7 @@ impl Config {
     pub fn list_profile_names(&self) -> Vec<String> {
         let mut result: Vec<String> = Vec::new();
 
-        for (name, _) in &self.profile {
+        for (name, _) in &self.profiles {
             result.push(name.to_string());
         }
 
@@ -117,7 +121,7 @@ impl Config {
     }
 
     pub fn get_profile<'a>(&'a self, profile: &str) -> Option<&'a Profile> {
-        self.profile.get(profile)
+        self.profiles.get(profile)
     }
 
     pub fn set_active(&mut self, profile: &str) -> Result<(), ()> {
@@ -136,7 +140,20 @@ impl Config {
     }
 
     pub fn get_active_profile<'a>(&'a self) -> Option<&'a Profile> {
-        self.profile.get(&self.active)
+        self.profiles.get(&self.active)
+    }
+
+    pub fn to_string(&self) -> String {
+        let mut result = Vec::new();
+        writeln!(&mut result, "active = \"{}\"", self.active).unwrap();
+
+        for (name, profile) in &self.profiles {
+            writeln!(&mut result, "").unwrap();
+            writeln!(&mut result, "[{}]", name).unwrap();
+            write!(&mut result, "{}", profile.to_string()).unwrap();
+        }
+
+        str::from_utf8(&result).unwrap().to_string()
     }
 }
 
@@ -185,5 +202,33 @@ impl Profile {
 
     pub fn sshkey(&self) -> Option<String> {
         self.sshkey.as_ref().cloned()
+    }
+
+    pub fn to_string(&self) -> String {
+        let mut result = Vec::new();
+
+        if let Some(v) = self.user_name() {
+            writeln!(&mut result, "user.name = \"{}\"", v).unwrap();
+        }
+        if let Some(v) = self.user_email() {
+            writeln!(&mut result, "user.email = \"{}\"", v).unwrap();
+        }
+        if let Some(v) = self.user_signingkey() {
+            writeln!(&mut result, "user.signingkey = \"{}\"", v).unwrap();
+        }
+        if let Some(v) = self.commit_gpgsign() {
+            writeln!(&mut result, "commit.gpgsign = {}", v).unwrap();
+        }
+        if let Some(v) = self.tag_gpgsign() {
+            writeln!(&mut result, "tag.gpgsign = {}", v).unwrap();
+        }
+        if let Some(v) = self.pull_rebase() {
+            writeln!(&mut result, "pull.rebase = {}", v).unwrap();
+        }
+        if let Some(v) = self.sshkey() {
+            writeln!(&mut result, "sshkey = \"{}\"", v).unwrap();
+        }
+
+        str::from_utf8(&result).unwrap().to_string()
     }
 }

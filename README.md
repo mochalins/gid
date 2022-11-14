@@ -44,7 +44,7 @@ This file must be named `gid.toml`, and can be placed in one of three locations
 ```toml
 active = "profile_name_1"  # The current active Git profile must be provided
 
-[profile.profile_name_1]  # Profile names come after a mandatory `profile.`
+[profile_name_1]  # Below are the currently supported options
 user.name = "my_git_username"
 user.email = "my_git_email@example.com"
 user.signingkey = "my_git_signingkey"
@@ -53,7 +53,7 @@ tag.gpgsign = true
 pull.rebase = false
 sshkey = "$HOME/.ssh/my_ssh_key"
 
-[profile.whatever_other_name]  # Profiles can specify as few or many
+[whatever_other_name]  # Profiles can specify as few or many
                                # configuration options as desired
 user.name = "my_git_username_2"
 user.email = "i-only-want-to-change-these-settings@example.com"
