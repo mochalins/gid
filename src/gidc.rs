@@ -110,9 +110,16 @@ fn main() {
             }
         }
         Action::List => {
-            let names = config.list_profile_names();
+            let mut names = config.list_profile_names();
+            let active_name = config.get_active_profile_name();
+
+            names.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
             for name in names {
-                println!("{}", name);
+                if active_name.as_deref() == Some(&name) {
+                    println!("* {}", name);
+                } else {
+                    println!("  {}", name);
+                }
             }
         }
         Action::Set { name } => {

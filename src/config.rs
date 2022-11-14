@@ -128,6 +128,13 @@ impl Config {
         Err(())
     }
 
+    pub fn get_active_profile_name(&self) -> Option<String> {
+        if let Some(_) = self.get_active_profile() {
+            return Some(self.active.clone());
+        }
+        None
+    }
+
     pub fn get_active_profile<'a>(&'a self) -> Option<&'a Profile> {
         self.profile.get(&self.active)
     }

@@ -87,7 +87,7 @@ gidc set <profile_name>
 <summary markdown="span"><h4>List all profiles</h4></summary>
 
 All available profile names in the configuration file can be listed with the
-`list` command.
+`list` command. The currently active profile will be marked with a `*`.
 
 ```console
 gidc list
