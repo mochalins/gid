@@ -1,1 +1,18 @@
+# This sets the `.gitignore` to be a *whitelist* by default.
+**/**
+!*/
+
+
+# Whitelist
+!*.md
+!LICENSE
+!Cargo.toml
+!Cargo.lock
+!.gitignore
+!.github/**/*.yml
+
+!*.rs
+
+
+# Blacklist (overrides Whitelist)
 /target
