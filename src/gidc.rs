@@ -22,6 +22,12 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Action {
+    /// Display profile settings
+    Display {
+        /// Profile name. Active profile if not provided.
+        name: Option<String>,
+    },
+
     /// Export profile settings to Git configuration
     Export {
         /// Export to global Git configuration. Local if not set.
@@ -60,6 +66,22 @@ fn main() {
     let mut config_doc = config_string.parse::<Document>().unwrap();
 
     match &cli.command {
+        Action::Display { name } => {
+            let mut profile = name;
+            if let None = name {
+                profile = &config.active;
+            }
+
+            let profile = profile
+                .as_ref()
+                .expect("no profile provided and no active profile");
+            let profile = config
+                .profiles
+                .get(profile)
+                .expect(format!("profile '{}' not found'", profile).as_str());
+
+            println!("{}", profile.to_string());
+        }
         Action::Export { global, name } => {
             let mut profile = name;
             if let None = name {
