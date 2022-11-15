@@ -1,5 +1,6 @@
+use crate::config::{Config, ToGitString};
 use clap::{Parser, Subcommand};
-use std::{fs, process::Command};
+use std::{fs, process::Command, str};
 use toml_edit::{value, Document};
 mod config;
 
@@ -37,93 +38,57 @@ enum Action {
 
 fn main() {
     let cli = Cli::parse();
-    let config_path = config::Config::detect().expect("could not detect config");
+    let config_path = Config::detect().expect("could not detect config");
     let config_string = fs::read_to_string(&config_path).unwrap();
-    let mut config = config::Config::parse(&config_string).unwrap();
+    let mut config = Config::parse(&config_string).unwrap();
     let mut config_doc = config_string.parse::<Document>().unwrap();
 
     match &cli.command {
         Action::Export { global, name } => {
-            let mut profile = config.get_active_profile();
-            if let Some(n) = name {
-                profile = config.get_profile(n);
+            let mut profile = name;
+            if let None = name {
+                profile = &config.active;
             }
-            let profile = profile.expect("profile not found");
+
+            let profile = profile
+                .as_ref()
+                .expect("no profile provided and no active profile");
+            let profile = config
+                .profiles
+                .get(profile)
+                .expect(format!("profile '{}' not found'", profile).as_str());
 
             let base_args = vec!["config", if *global { "--global" } else { "--local" }];
 
-            if let Some(n) = profile.user_name() {
+            for (key, val) in profile.fields.iter() {
                 Command::new("git")
                     .args(&base_args)
-                    .arg("user.name")
-                    .arg(n)
-                    .status()
-                    .expect("failed to execute Git command");
-            }
-            if let Some(e) = profile.user_email() {
-                Command::new("git")
-                    .args(&base_args)
-                    .arg("user.email")
-                    .arg(e)
-                    .status()
-                    .expect("failed to execute Git command");
-            }
-            if let Some(s) = profile.user_signingkey() {
-                Command::new("git")
-                    .args(&base_args)
-                    .arg("user.signingkey")
-                    .arg(s)
-                    .status()
-                    .expect("failed to execute Git command");
-            }
-            if let Some(g) = profile.commit_gpgsign() {
-                Command::new("git")
-                    .args(&base_args)
-                    .arg("commit.gpgsign")
-                    .arg(g.to_string())
-                    .status()
-                    .expect("failed to execute Git command");
-            }
-            if let Some(g) = profile.tag_gpgsign() {
-                Command::new("git")
-                    .args(&base_args)
-                    .arg("tag.gpgsign")
-                    .arg(g.to_string())
-                    .status()
-                    .expect("failed to execute Git command");
-            }
-            if let Some(r) = profile.pull_rebase() {
-                Command::new("git")
-                    .args(&base_args)
-                    .arg("pull.rebase")
-                    .arg(r.to_string())
-                    .status()
-                    .expect("failed to execute Git command");
-            }
-            if let Some(s) = profile.sshkey() {
-                Command::new("git")
-                    .args(&base_args)
-                    .arg("core.sshCommand")
-                    .arg(format!("ssh -i \"{}\"", s))
+                    .arg(key)
+                    .arg(val.to_git_string())
                     .status()
                     .expect("failed to execute Git command");
             }
         }
         Action::List => {
-            let mut names = config.list_profile_names();
-            let active_name = config.get_active_profile_name();
-
-            names.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
-            for name in names {
-                if active_name.as_deref() == Some(&name) {
-                    println!("* {}", name);
+            let active = if let Some(a) = config.active {
+                a
+            } else {
+                "".to_string()
+            };
+            for profile in config.profiles.iter() {
+                if profile.name == active {
+                    println!("* {}", profile.name);
                 } else {
-                    println!("  {}", name);
+                    println!("  {}", profile.name);
                 }
             }
         }
         Action::Set { name } => {
-            config.set_active(name).expect("invalid profile name");
+            if let Some(_) = config.profiles.get(name) {
+                config.active = Some(name.to_string());
+            } else {
+                panic!("profile name not found in configuration");
+            }
             config_doc["active"] = value(name);
             fs::write(&config_path, config_doc.to_string()).unwrap();
         }

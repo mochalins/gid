@@ -42,22 +42,30 @@ This file must be named `gid.toml`, and can be placed in one of three locations
 <summary markdown="span"><i>An example `gid.toml`</i></summary>
 
 ```toml
-active = "profile_name_1"  # The current active Git profile must be provided
+active = "profile_name_1"  # The current active Git profile, can be set
+                           # automatically with the `gidc set` command
 
-[profile_name_1]  # Below are the currently supported options
+# Not all TOML types are supported, only valid Git values are allowed:
+# booleans, integers, colors (string color/attribute name, 0-255, or 24 bit
+# RGB hex code as either a single value or in an array), and strings ("yes",
+# "off", paths, etc...)
+#
+# Details found here: https://git-scm.com/docs/git-config
+
+[profile_name_1]
 user.name = "my_git_username"
 user.email = "my_git_email@example.com"
 user.signingkey = "my_git_signingkey"
 commit.gpgsign = true
 tag.gpgsign = true
 pull.rebase = false
-sshkey = "$HOME/.ssh/my_ssh_key"
+core.sshCommand = "ssh -i \"$HOME/.ssh/my_ssh_key\""
 
-[whatever_other_name]  # Profiles can specify as few or many
-                               # configuration options as desired
+# Profiles can specify as few or many configuration options as desired
+[whatever_other_name]
 user.name = "my_git_username_2"
 user.email = "i-only-want-to-change-these-settings@example.com"
-sshkey = "$HOME/.ssh/id_rsa"
+core.sshCommand = "ssh -i \"$HOME/.ssh/id_rsa\""
 ```
 </details>
 

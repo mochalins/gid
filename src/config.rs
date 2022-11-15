@@ -1,50 +1,23 @@
-use serde::Deserialize;
 use std::{
-    collections::HashMap,
+    borrow::Borrow,
+    cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd},
+    collections::{BTreeSet, HashMap},
     env, fs,
     io::Write,
     path::{Path, PathBuf},
     str,
+    string::ToString,
 };
-use toml::from_str;
+use toml;
 
-#[derive(Deserialize, Debug)]
+pub trait ToGitString {
+    fn to_git_string(&self) -> String;
+}
+
+#[derive(Debug)]
 pub struct Config {
-    active: String,
-
-    #[serde(flatten)]
-    profiles: HashMap<String, Profile>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Profile {
-    user: Option<ProfileUser>,
-    commit: Option<ProfileCommit>,
-    tag: Option<ProfileTag>,
-    pull: Option<ProfilePull>,
-    sshkey: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-struct ProfileUser {
-    name: Option<String>,
-    email: Option<String>,
-    signingkey: Option<String>,
-}
-
-#[derive(Deserialize, Debug)]
-struct ProfileCommit {
-    gpgsign: Option<bool>,
-}
-
-#[derive(Deserialize, Debug)]
-struct ProfileTag {
-    gpgsign: Option<bool>,
-}
-
-#[derive(Deserialize, Debug)]
-struct ProfilePull {
-    rebase: Option<bool>,
+    pub active: Option<String>,
+    pub profiles: BTreeSet<Profile>,
 }
 
 impl Config {
@@ -94,8 +67,94 @@ impl Config {
     }
 
     pub fn parse(s: &str) -> Result<Self, String> {
-        match from_str(s) {
-            Ok(c) => Ok(c),
+        let s_parse = s.parse::<toml::Value>();
+        match s_parse {
+            Ok(mut v) => {
+                if let Some(s_table) = v.as_table_mut() {
+                    let mut result = Config {
+                        active: None,
+                        profiles: BTreeSet::new(),
+                    };
+
+                    // Parse active profile
+                    if let Some(s) = s_table.remove("active") {
+                        if let Some(sv) = s.as_str() {
+                            result.active = Some(String::from(sv));
+                        }
+                    }
+
+                    // Parse profiles
+                    for (name, profile) in s_table.iter() {
+                        if let Some(pt) = profile.as_table() {
+                            let mut result_profile: Profile = Profile {
+                                name: name.to_string(),
+                                fields: HashMap::new(),
+                            };
+                            let mut field_queue: Vec<(String, &toml::Value)> = Vec::new();
+                            for (key, val) in pt.iter() {
+                                field_queue.push((key.to_string(), val));
+                            }
+                            while field_queue.len() > 0 {
+                                let (key, val) = field_queue.pop().unwrap();
+                                match val {
+                                    toml::Value::Table(t) => {
+                                        for (tkey, tval) in t.iter() {
+                                            field_queue.push((format!("{}.{}", key, tkey), tval));
+                                        }
+                                    }
+                                    toml::Value::Array(a) => {
+                                        let mut color_array: Vec<Color> = Vec::new();
+                                        for c in a.iter() {
+                                            match c {
+                                                toml::Value::String(s) => {
+                                                    color_array.push(Color::String(s.to_string()));
+                                                }
+                                                toml::Value::Integer(i) => {
+                                                    color_array.push(Color::Number(*i as u32));
+                                                }
+                                                _ => panic!(
+                                                    "configuration cannot \
+                                                    contain non-color arrays \
+                                                    (colors are 0-255, 24 bit \
+                                                     hex codes, or color name \
+                                                     and attribute strings as \
+                                                     defined by Git \
+                                                     configuration values"
+                                                ),
+                                            }
+                                        }
+                                        result_profile
+                                            .fields
+                                            .insert(key, Value::ColorArray(color_array));
+                                    }
+                                    toml::Value::Boolean(b) => {
+                                        result_profile.fields.insert(key, Value::Boolean(*b));
+                                    }
+                                    toml::Value::Integer(i) => {
+                                        result_profile.fields.insert(key, Value::Integer(*i));
+                                    }
+                                    toml::Value::String(s) => {
+                                        result_profile
+                                            .fields
+                                            .insert(key, Value::String(s.to_string()));
+                                    }
+                                    _ => {
+                                        panic!(
+                                            "unknown Git representation for \
+                                            TOML float, date, time, and \
+                                            datetime types"
+                                        );
+                                    }
+                                }
+                            }
+                            result.profiles.insert(result_profile);
+                        }
+                    }
+                    return Ok(result);
+                } else {
+                    return Err("config is not a top level table".to_string());
+                }
+            }
             Err(e) => Err(e.to_string()),
         }
     }
@@ -109,126 +168,159 @@ impl Config {
 
         Config::parse(&config_string)
     }
+}
 
-    pub fn list_profile_names(&self) -> Vec<String> {
-        let mut result: Vec<String> = Vec::new();
-
-        for (name, _) in &self.profiles {
-            result.push(name.to_string());
-        }
-
-        result
-    }
-
-    pub fn get_profile<'a>(&'a self, profile: &str) -> Option<&'a Profile> {
-        self.profiles.get(profile)
-    }
-
-    pub fn set_active(&mut self, profile: &str) -> Result<(), ()> {
-        if self.get_profile(profile).is_some() {
-            self.active = profile.to_string();
-            return Ok(());
-        }
-        Err(())
-    }
-
-    pub fn get_active_profile_name(&self) -> Option<String> {
-        if let Some(_) = self.get_active_profile() {
-            return Some(self.active.clone());
-        }
-        None
-    }
-
-    pub fn get_active_profile<'a>(&'a self) -> Option<&'a Profile> {
-        self.profiles.get(&self.active)
-    }
-
-    pub fn to_string(&self) -> String {
+impl ToString for Config {
+    fn to_string(&self) -> String {
         let mut result = Vec::new();
-        writeln!(&mut result, "active = \"{}\"", self.active).unwrap();
-
-        for (name, profile) in &self.profiles {
+        if let Some(s) = &self.active {
+            writeln!(&mut result, "active = \"{}\"", s).unwrap();
+        }
+        for profile in self.profiles.iter() {
             writeln!(&mut result, "").unwrap();
-            writeln!(&mut result, "[{}]", name).unwrap();
             write!(&mut result, "{}", profile.to_string()).unwrap();
         }
-
         str::from_utf8(&result).unwrap().to_string()
     }
 }
 
-impl Profile {
-    pub fn user_name(&self) -> Option<String> {
-        match &self.user {
-            Some(u) => u.name.as_ref().cloned(),
-            None => None,
-        }
-    }
+#[derive(Debug)]
+pub struct Profile {
+    pub name: String,
+    pub fields: HashMap<String, Value>,
+}
 
-    pub fn user_email(&self) -> Option<String> {
-        match &self.user {
-            Some(u) => u.email.as_ref().cloned(),
-            None => None,
-        }
+impl Borrow<str> for Profile {
+    fn borrow(&self) -> &str {
+        &self.name
     }
+}
 
-    pub fn user_signingkey(&self) -> Option<String> {
-        match &self.user {
-            Some(u) => u.signingkey.as_ref().cloned(),
-            None => None,
-        }
+impl Borrow<String> for Profile {
+    fn borrow(&self) -> &String {
+        &self.name
     }
+}
 
-    pub fn commit_gpgsign(&self) -> Option<bool> {
-        match &self.commit {
-            Some(c) => c.gpgsign.as_ref().cloned(),
-            None => None,
-        }
+impl Eq for Profile {}
+
+impl Ord for Profile {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.name.cmp(&other.name)
     }
+}
 
-    pub fn tag_gpgsign(&self) -> Option<bool> {
-        match &self.tag {
-            Some(t) => t.gpgsign.as_ref().cloned(),
-            None => None,
-        }
+impl PartialEq for Profile {
+    fn eq(&self, other: &Self) -> bool {
+        self.name.eq(&other.name)
     }
+}
 
-    pub fn pull_rebase(&self) -> Option<bool> {
-        match &self.pull {
-            Some(p) => p.rebase.as_ref().cloned(),
-            None => None,
-        }
+impl PartialOrd for Profile {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.name.partial_cmp(&other.name)
     }
+}
 
-    pub fn sshkey(&self) -> Option<String> {
-        self.sshkey.as_ref().cloned()
-    }
-
-    pub fn to_string(&self) -> String {
+impl ToString for Profile {
+    fn to_string(&self) -> String {
         let mut result = Vec::new();
-
-        if let Some(v) = self.user_name() {
-            writeln!(&mut result, "user.name = \"{}\"", v).unwrap();
+        writeln!(&mut result, "[{}]", self.name).unwrap();
+        for (key, val) in self.fields.iter() {
+            writeln!(&mut result, "{} = {}", key, val.to_string()).unwrap();
         }
-        if let Some(v) = self.user_email() {
-            writeln!(&mut result, "user.email = \"{}\"", v).unwrap();
-        }
-        if let Some(v) = self.user_signingkey() {
-            writeln!(&mut result, "user.signingkey = \"{}\"", v).unwrap();
-        }
-        if let Some(v) = self.commit_gpgsign() {
-            writeln!(&mut result, "commit.gpgsign = {}", v).unwrap();
-        }
-        if let Some(v) = self.tag_gpgsign() {
-            writeln!(&mut result, "tag.gpgsign = {}", v).unwrap();
-        }
-        if let Some(v) = self.pull_rebase() {
-            writeln!(&mut result, "pull.rebase = {}", v).unwrap();
-        }
-        if let Some(v) = self.sshkey() {
-            writeln!(&mut result, "sshkey = \"{}\"", v).unwrap();
-        }
-
         str::from_utf8(&result).unwrap().to_string()
+    }
+}
+
+#[derive(Debug)]
+pub enum Value {
+    Boolean(bool),
+    ColorArray(Vec<Color>),
+    Integer(i64),
+    String(String),
+}
+
+impl ToGitString for Value {
+    fn to_git_string(&self) -> String {
+        match self {
+            Self::Boolean(b) => b.to_string(),
+            Self::ColorArray(v) => v
+                .iter()
+                .map(|c| c.to_git_string())
+                .collect::<Vec<_>>()
+                .join(" "),
+            Self::Integer(i) => i.to_string(),
+            Self::String(s) => s.to_string(),
+        }
+    }
+}
+
+impl ToString for Value {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Boolean(b) => b.to_string(),
+            Self::ColorArray(v) => format!(
+                "[{}]",
+                v.iter()
+                    .map(|c| c.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Self::Integer(i) => i.to_string(),
+            Self::String(s) => {
+                if s.contains("\n") {
+                    format!(
+                        "\"\"\"{}\"\"\"",
+                        s.replace("\"", "\\\"")
+                            .replace("\\", "\\\\")
+                            .replace("\t", "\\t")
+                    )
+                } else {
+                    format!(
+                        "\"{}\"",
+                        s.replace("\"", "\\\"")
+                            .replace("\\", "\\\\")
+                            .replace("\t", "\\t")
+                    )
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Color {
+    Number(u32),
+    String(String),
+}
+
+impl ToGitString for Color {
+    fn to_git_string(&self) -> String {
+        match self {
+            Self::Number(i) => {
+                if *i < 256 {
+                    i.to_string()
+                } else {
+                    format!("#{:x}", i)
+                }
+            }
+            Self::String(s) => s.to_string(),
+        }
+    }
+}
+
+impl ToString for Color {
+    fn to_string(&self) -> String {
+        match self {
+            Self::Number(i) => {
+                if *i < 256 {
+                    i.to_string()
+                } else {
+                    format!("0x{:x}", i)
+                }
+            }
+            Self::String(s) => format!("\"{}\"", s),
+        }
     }
 }
