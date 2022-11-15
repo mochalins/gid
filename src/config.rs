@@ -1,17 +1,24 @@
+use serde::de::Error;
 use std::{
     borrow::Borrow,
     cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd},
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     env, fs,
     io::Write,
     path::{Path, PathBuf},
-    str,
+    str::{from_utf8, FromStr},
     string::ToString,
 };
 use toml;
 
 pub trait ToGitString {
     fn to_git_string(&self) -> String;
+}
+
+pub trait FromGitStr {
+    fn from_git_str(s: &str) -> Result<Self, String>
+    where
+        Self: Sized;
 }
 
 #[derive(Debug)]
@@ -66,7 +73,24 @@ impl Config {
         config_path
     }
 
-    pub fn parse(s: &str) -> Result<Self, String> {
+    pub fn parse_file(p: &Path) -> Result<Self, String> {
+        let config_string = fs::read_to_string(p);
+        if config_string.is_err() {
+            return Err("could not load configuration file".to_string());
+        }
+        let config_string = config_string.unwrap();
+
+        match config_string.parse::<Config>() {
+            Ok(res) => Ok(res),
+            Err(e) => Err(e.to_string()),
+        }
+    }
+}
+
+impl FromStr for Config {
+    type Err = toml::de::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s_parse = s.parse::<toml::Value>();
         match s_parse {
             Ok(mut v) => {
@@ -88,7 +112,7 @@ impl Config {
                         if let Some(pt) = profile.as_table() {
                             let mut result_profile: Profile = Profile {
                                 name: name.to_string(),
-                                fields: HashMap::new(),
+                                fields: BTreeMap::new(),
                             };
                             let mut field_queue: Vec<(String, &toml::Value)> = Vec::new();
                             for (key, val) in pt.iter() {
@@ -112,15 +136,17 @@ impl Config {
                                                 toml::Value::Integer(i) => {
                                                     color_array.push(Color::Number(*i as u32));
                                                 }
-                                                _ => panic!(
-                                                    "configuration cannot \
+                                                _ => {
+                                                    return Err(toml::de::Error::custom(
+                                                        "configuration cannot \
                                                     contain non-color arrays \
                                                     (colors are 0-255, 24 bit \
                                                      hex codes, or color name \
                                                      and attribute strings as \
                                                      defined by Git \
-                                                     configuration values"
-                                                ),
+                                                     configuration values",
+                                                    ));
+                                                }
                                             }
                                         }
                                         result_profile
@@ -139,11 +165,11 @@ impl Config {
                                             .insert(key, Value::String(s.to_string()));
                                     }
                                     _ => {
-                                        panic!(
+                                        return Err(toml::de::Error::custom(
                                             "unknown Git representation for \
                                             TOML float, date, time, and \
-                                            datetime types"
-                                        );
+                                            datetime types",
+                                        ));
                                     }
                                 }
                             }
@@ -152,21 +178,13 @@ impl Config {
                     }
                     return Ok(result);
                 } else {
-                    return Err("config is not a top level table".to_string());
+                    return Err(toml::de::Error::custom(
+                        "config is not a top level table".to_string(),
+                    ));
                 }
             }
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(e),
         }
-    }
-
-    pub fn parse_file(p: &Path) -> Result<Self, String> {
-        let config_string = fs::read_to_string(p);
-        if config_string.is_err() {
-            return Err("could not load configuration file".to_string());
-        }
-        let config_string = config_string.unwrap();
-
-        Config::parse(&config_string)
     }
 }
 
@@ -180,14 +198,14 @@ impl ToString for Config {
             writeln!(&mut result, "").unwrap();
             write!(&mut result, "{}", profile.to_string()).unwrap();
         }
-        str::from_utf8(&result).unwrap().to_string()
+        from_utf8(&result).unwrap().to_string()
     }
 }
 
 #[derive(Debug)]
 pub struct Profile {
     pub name: String,
-    pub fields: HashMap<String, Value>,
+    pub fields: BTreeMap<String, Value>,
 }
 
 impl Borrow<str> for Profile {
@@ -229,7 +247,7 @@ impl ToString for Profile {
         for (key, val) in self.fields.iter() {
             writeln!(&mut result, "{} = {}", key, val.to_string()).unwrap();
         }
-        str::from_utf8(&result).unwrap().to_string()
+        from_utf8(&result).unwrap().to_string()
     }
 }
 
@@ -239,6 +257,18 @@ pub enum Value {
     ColorArray(Vec<Color>),
     Integer(i64),
     String(String),
+}
+
+impl FromGitStr for Value {
+    fn from_git_str(s: &str) -> Result<Self, String> {
+        if let Ok(b) = s.parse::<bool>() {
+            return Ok(Self::Boolean(b));
+        } else if let Ok(i) = s.parse::<i64>() {
+            return Ok(Self::Integer(i));
+        } else {
+            return Ok(Self::String(s.to_string()));
+        }
+    }
 }
 
 impl ToGitString for Value {
@@ -272,15 +302,15 @@ impl ToString for Value {
                 if s.contains("\n") {
                     format!(
                         "\"\"\"{}\"\"\"",
-                        s.replace("\"", "\\\"")
-                            .replace("\\", "\\\\")
+                        s.replace("\\", "\\\\")
+                            .replace("\"", "\\\"")
                             .replace("\t", "\\t")
                     )
                 } else {
                     format!(
                         "\"{}\"",
-                        s.replace("\"", "\\\"")
-                            .replace("\\", "\\\\")
+                        s.replace("\\", "\\\\")
+                            .replace("\"", "\\\"")
                             .replace("\t", "\\t")
                     )
                 }

@@ -1,6 +1,12 @@
-use crate::config::{Config, ToGitString};
+use crate::config::{Config, FromGitStr, Profile, ToGitString, Value};
 use clap::{Parser, Subcommand};
-use std::{fs, process::Command, str};
+use std::{
+    collections::BTreeMap,
+    fs,
+    io::{stdin, stdout, Write},
+    process::Command,
+    str,
+};
 use toml_edit::{value, Document};
 mod config;
 
@@ -26,6 +32,16 @@ enum Action {
         name: Option<String>,
     },
 
+    /// Import Git configuration to profile
+    Import {
+        /// Import global Git configuration. Local if not set.
+        #[arg(short, long)]
+        global: bool,
+
+        /// New or existing profile name. Active profile if not provided.
+        name: Option<String>,
+    },
+
     /// List all profiles
     List,
 
@@ -40,7 +56,7 @@ fn main() {
     let cli = Cli::parse();
     let config_path = Config::detect().expect("could not detect config");
     let config_string = fs::read_to_string(&config_path).unwrap();
-    let mut config = Config::parse(&config_string).unwrap();
+    let mut config = config_string.parse::<Config>().unwrap();
     let mut config_doc = config_string.parse::<Document>().unwrap();
 
     match &cli.command {
@@ -68,6 +84,73 @@ fn main() {
                     .status()
                     .expect("failed to execute Git command");
             }
+        }
+        Action::Import { global, name } => {
+            let mut profile = name;
+            if let None = name {
+                profile = &config.active;
+            }
+            let profile = profile
+                .as_ref()
+                .expect("no profile provided and no active profile");
+
+            if let Some(_) = config.profiles.get(profile) {
+                let mut user_confirmation = String::new();
+                while user_confirmation != "y"
+                    && user_confirmation != "n"
+                    && user_confirmation != "yes"
+                    && user_confirmation != "no"
+                {
+                    println!(
+                        "Profile {} already exists; overwrite while importing?",
+                        &profile
+                    );
+                    print!("[Y]es, [N]o: ");
+                    let _ = stdout().flush();
+                    stdin()
+                        .read_line(&mut user_confirmation)
+                        .expect("failed to parse user input");
+                    user_confirmation = user_confirmation.trim().to_lowercase();
+                }
+
+                if user_confirmation != "y" && user_confirmation != "yes" {
+                    return;
+                }
+
+                config.profiles.remove(profile);
+            }
+
+            let mut new_profile: Profile = Profile {
+                name: profile.to_string(),
+                fields: BTreeMap::new(),
+            };
+
+            let config_string: String = str::from_utf8(
+                &Command::new("git")
+                    .arg("config")
+                    .arg(if *global { "--global" } else { "--local" })
+                    .arg("--list")
+                    .output()
+                    .expect("failed to execute Git command")
+                    .stdout,
+            )
+            .expect("could not parse Git config output into valid UTF-8")
+            .to_string();
+
+            for line in config_string.lines() {
+                let (key, value) = line.split_once('=').unwrap();
+                if let Ok(v) = Value::from_git_str(value) {
+                    new_profile.fields.insert(key.to_string(), v);
+                }
+            }
+
+            config.profiles.insert(new_profile);
+            fs::write(&config_path, config.to_string()).unwrap();
+            println!(
+                "{} configuration imported to {}",
+                if *global { "Global" } else { "Local" },
+                profile
+            );
         }
         Action::List => {
             let active = if let Some(a) = config.active {
