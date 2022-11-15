@@ -119,3 +119,22 @@ configuration by default.
 A profile name can be provided to `export` to specify which profile should be
 used. If not provided, the current active profile will be used by default.
 </details>
+
+<details>
+<summary markdown="span"><h4>Import Git configuration to profile</h4></summary>
+
+Local or global Git configurations can be imported to an existing or new
+profile with the `import` command.
+
+```console
+gidc import [-g] [profile_name]
+```
+
+The `-g` flag indicates whether the global Git configuration should be
+imported. If not set, `import` will work with the local Git configuration by
+default.
+
+A profile name can be provided to `import` to specify which profile should be
+used. If not provided, the current active profile will be used by default. A
+new profile name can be provided to create a new profile.
+</details>
