@@ -41,9 +41,6 @@ jobs:
         continue-on-error: true
         run: rm ${{github.workspace}}/${{github.ref_name}}/${{matrix.os}}/release/gidc.pdb
 
-      - name: Strip
-        run: strip ${{github.workspace}}/${{github.ref_name}}/${{matrix.os}}/release/gid*
-
       - name: Compress
         run: 7z a -tzip ${{github.workspace}}/bin/${{github.ref_name}}-${{matrix.os}}.zip ${{github.workspace}}/${{github.ref_name}}/${{matrix.os}}/release/gid*
 

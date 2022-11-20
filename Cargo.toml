@@ -9,6 +9,12 @@ readme = "README.md"
 repository = "https://github.com/sushigiri/gid"
 default-run = "gid"
 
+[profile.release]
+strip = "symbols"
+lto = "fat"
+panic = "abort"
+codegen-units = 1
+
 [[bin]]
 name = "gid"
 path = "src/gid.rs"
