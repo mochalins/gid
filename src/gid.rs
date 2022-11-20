@@ -3,7 +3,11 @@ use std::{env, process::Command};
 mod config;
 
 fn main() {
-    let config = Config::detect().expect("could not detect config");
+    let config_error_message = "No configuration detected. Learn how to \
+                                initialize an empty configuration file with
+                                `gidc help init`.";
+
+    let config = Config::detect().expect(config_error_message);
     let config = Config::parse_file(&config).unwrap();
 
     let profile = config.active.expect("no active profile");
