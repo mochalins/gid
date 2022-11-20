@@ -28,6 +28,35 @@ pub struct Config {
 }
 
 impl Config {
+    /// Get path of config file in executable directory, if path exists.
+    pub fn exe_path() -> Option<PathBuf> {
+        let config_path = env::current_exe();
+        if let Ok(p) = config_path {
+            let mut config_path = p;
+            config_path.set_file_name("gid.toml");
+            return Some(config_path);
+        }
+        None
+    }
+
+    /// Get path of config file in user config directory, if path exists.
+    pub fn config_path() -> Option<PathBuf> {
+        let home_env = if env::consts::OS == "windows" {
+            "USERPROFILE"
+        } else {
+            "HOME"
+        };
+        let home_path = env::var(home_env);
+        if let Ok(s) = home_path {
+            let mut config_path = PathBuf::from(&s);
+            config_path.push(".config");
+            config_path.push("gid");
+            config_path.push("gid.toml");
+            return Some(config_path);
+        }
+        None
+    }
+
     pub fn detect() -> Option<PathBuf> {
         let mut config_path: Option<PathBuf> = None;
 
@@ -40,33 +69,22 @@ impl Config {
             }
         }
 
-        // Check local working directory for config file
+        // Check current executable directory for config file
         if config_path.is_none() {
-            let local_config_path = env::current_exe();
-            if let Ok(p) = local_config_path {
-                let mut local_config_path = p;
-                local_config_path.set_file_name("gid.toml");
-                if let Ok(true) = local_config_path.try_exists() {
-                    config_path = Some(local_config_path);
+            let local_config_path = Config::exe_path();
+            if let Some(ref p) = local_config_path {
+                if let Ok(true) = p.try_exists() {
+                    config_path = local_config_path;
                 }
             }
         }
 
-        // Check config directory for config file
+        // Check user config directory for config file
         if config_path.is_none() {
-            let home_env = if env::consts::OS == "windows" {
-                "USERPROFILE"
-            } else {
-                "HOME"
-            };
-            let home_path = env::var(home_env);
-            if let Ok(s) = home_path {
-                let mut home_config_path = PathBuf::from(&s);
-                home_config_path.push(".config");
-                home_config_path.push("gid");
-                home_config_path.push("gid.toml");
-                if let Ok(true) = home_config_path.try_exists() {
-                    config_path = Some(home_config_path);
+            let config_config_path = Config::config_path();
+            if let Some(ref p) = config_config_path {
+                if let Ok(true) = p.try_exists() {
+                    config_path = config_config_path;
                 }
             }
         }

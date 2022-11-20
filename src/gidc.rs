@@ -1,9 +1,10 @@
 use crate::config::{Config, FromGitStr, Profile, ToGitString, Value};
 use clap::{Parser, Subcommand};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs,
     io::{stdin, stdout, Write},
+    path::PathBuf,
     process::Command,
     str,
 };
@@ -48,6 +49,21 @@ enum Action {
         name: Option<String>,
     },
 
+    /// Initialize an empty gid configuration file
+    Init {
+        /// Create the configuration file in the user's config directory.
+        #[arg(short, long)]
+        config: bool,
+
+        /// Create the configuration file in the `gidc` executable's directory.
+        #[arg(short, long)]
+        exe: bool,
+
+        /// Create the configuration file at the provided path.
+        #[arg(short, long)]
+        path: Option<String>,
+    },
+
     /// List all profiles
     List,
 
@@ -60,13 +76,32 @@ enum Action {
 
 fn main() {
     let cli = Cli::parse();
-    let config_path = Config::detect().expect("could not detect config");
-    let config_string = fs::read_to_string(&config_path).unwrap();
-    let mut config = config_string.parse::<Config>().unwrap();
-    let mut config_doc = config_string.parse::<Document>().unwrap();
+    let config_path = Config::detect();
+    let config_string: Option<String> = if let Some(ref cp) = config_path {
+        Some(fs::read_to_string(&cp).unwrap())
+    } else {
+        None
+    };
+    let config: Option<Config> = if let Some(ref s) = config_string {
+        Some(s.parse::<Config>().unwrap())
+    } else {
+        None
+    };
+    let config_doc: Option<Document> = if let Some(ref s) = config_string {
+        Some(s.parse::<Document>().unwrap())
+    } else {
+        None
+    };
+
+    let config_error_message = "No configuration detected. Learn how to \
+                                initialize an empty configuration file with
+                                `gidc help init`.";
 
     match &cli.command {
         Action::Display { name } => {
+            config_path.as_ref().expect(config_error_message);
+            let config = config.unwrap();
+
             let mut profile = name;
             if let None = name {
                 profile = &config.active;
@@ -83,6 +118,9 @@ fn main() {
             println!("{}", profile.to_string());
         }
         Action::Export { global, name } => {
+            config_path.as_ref().expect(config_error_message);
+            let config = config.unwrap();
+
             let mut profile = name;
             if let None = name {
                 profile = &config.active;
@@ -108,6 +146,10 @@ fn main() {
             }
         }
         Action::Import { global, name } => {
+            config_path.as_ref().expect(config_error_message);
+            let ref config_path = config_path.unwrap();
+            let mut config = config.unwrap();
+
             let mut profile = name;
             if let None = name {
                 profile = &config.active;
@@ -174,7 +216,43 @@ fn main() {
                 profile
             );
         }
+        Action::Init { config, exe, path } => {
+            let c = Config {
+                active: None,
+                profiles: BTreeSet::new(),
+            };
+
+            let mut paths: Vec<PathBuf> = Vec::new();
+
+            if *config {
+                if let Some(cp) = Config::config_path() {
+                    paths.push(cp);
+                }
+            }
+
+            if *exe {
+                if let Some(cp) = Config::exe_path() {
+                    paths.push(cp);
+                }
+            }
+
+            if let Some(p) = path {
+                paths.push(PathBuf::from(p));
+            }
+
+            for path in paths.iter() {
+                if config_path != None && Some(path) == config_path.as_ref() {
+                    println!("Configuration already exists at {}", path.display());
+                    continue;
+                }
+                fs::write(&path, c.to_string()).unwrap();
+                println!("Configuration file written to {}", path.display());
+            }
+        }
         Action::List => {
+            config_path.as_ref().expect(config_error_message);
+            let config = config.unwrap();
+
             let active = if let Some(a) = config.active {
                 a
             } else {
@@ -189,6 +267,11 @@ fn main() {
             }
         }
         Action::Set { name } => {
+            config_path.as_ref().expect(config_error_message);
+            let ref config_path = config_path.unwrap();
+            let mut config = config.unwrap();
+            let mut config_doc = config_doc.unwrap();
+
             if let Some(_) = config.profiles.get(name) {
                 config.active = Some(name.to_string());
             } else {
