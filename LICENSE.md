@@ -1,4 +1,4 @@
-Copyright (c) 2022 sushigiri
+Copyright (c) 2022-2023 mochalins
 
 The Universal Permissive License (UPL), Version 1.0
 
