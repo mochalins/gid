@@ -8,7 +8,7 @@ use std::{
     process::Command,
     str,
 };
-use toml_edit::{value, Document};
+use toml_edit::{value, DocumentMut};
 mod config;
 
 #[derive(Parser, Debug)]
@@ -87,8 +87,8 @@ fn main() {
     } else {
         None
     };
-    let config_doc: Option<Document> = if let Some(ref s) = config_string {
-        Some(s.parse::<Document>().unwrap())
+    let config_doc: Option<DocumentMut> = if let Some(ref s) = config_string {
+        Some(s.parse::<DocumentMut>().unwrap())
     } else {
         None
     };
