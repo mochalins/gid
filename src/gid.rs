@@ -1,6 +1,5 @@
-use crate::config::{Config, ToGitString};
+use gid::{Config, ToGitString};
 use std::{env, process::Command};
-mod config;
 
 fn main() {
     let config_error_message = "No configuration detected. Learn how to \

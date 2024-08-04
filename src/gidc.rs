@@ -1,5 +1,5 @@
-use crate::config::{Config, FromGitStr, Profile, ToGitString, Value};
 use clap::{Parser, Subcommand};
+use gid::{Config, FromGitStr, Profile, ToGitString, Value};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -9,7 +9,6 @@ use std::{
     str,
 };
 use toml_edit::{value, DocumentMut};
-mod config;
 
 #[derive(Parser, Debug)]
 #[command(name = "gidc")]
