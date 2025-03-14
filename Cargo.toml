@@ -2,11 +2,11 @@
 name = "gid"
 description = "git identity manager"
 license = "UPL-1.0"
-authors = ["sushigiri"]
+authors = ["mochalins"]
 version = "0.3.1"
-edition = "2021"
+edition = "2024"
 readme = "README.md"
-repository = "https://github.com/sushigiri/gid"
+repository = "https://github.com/mochalins/gid"
 default-run = "gid"
 
 [profile.release]
